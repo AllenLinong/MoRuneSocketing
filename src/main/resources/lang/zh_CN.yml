@@ -58,6 +58,11 @@ command:
     success: "§a成功给予 §e%player% §a%amount% 个 §e%rune%§a！"
   reload:
     success: "§a配置文件已重载！"
+  analyze:
+    no-item: "§c你手中没有物品！"
+    no-enchant: "§c该物品没有附魔！"
+    header: "§6===== 手中物品附魔分析 ====="
+    entry: "§a%key% §7→ §e等级: §f%level%"
 
 # ==================== 符文拆卸粉相关消息 ====================
 rune-remover:

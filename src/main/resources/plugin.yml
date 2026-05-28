@@ -1,8 +1,8 @@
 name: MoRuneSocketing
-version: 1.0.5-Release
+version: 1.0.6-Release
 author: MoRune
 main: com.morunesocketing.MoRuneSocketing
-api-version: 1.13
+api-version: 1.21
 
 commands:
   mrs:

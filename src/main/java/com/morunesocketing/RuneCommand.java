@@ -2,19 +2,23 @@ package com.morunesocketing;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -42,6 +46,7 @@ public class RuneCommand implements CommandExecutor, TabCompleter {
     private static final String CMD_SETINTERVAL = "setinterval";
     private static final String CMD_SETRATE = "setrate";
     private static final String CMD_GIVE_REMOVER = "giveremover";
+    private static final String CMD_ANALYZE = "analyze";
     
     // 数量选项
     private static final List<String> AMOUNT_OPTIONS = Arrays.asList("1", "5", "10", "16", "32", "64");
@@ -95,6 +100,7 @@ public class RuneCommand implements CommandExecutor, TabCompleter {
             case CMD_MENU -> handleMenuCommand(sender);
             case CMD_GIVE -> handleGiveCommand(sender, args);
             case CMD_GIVE_REMOVER -> handleGiveRemoverCommand(sender, args);
+            case CMD_ANALYZE -> handleAnalyzeCommand(sender);
             case CMD_RELOAD -> handleReloadCommand(sender);
             case CMD_SETINTERVAL -> handleSetIntervalCommand(sender, args);
             case CMD_SETRATE -> handleSetRateCommand(sender, args);
@@ -220,6 +226,56 @@ public class RuneCommand implements CommandExecutor, TabCompleter {
         
         item.setItemMeta(meta);
         return item;
+    }
+    
+    /**
+     * 处理分析手中物品命令
+     */
+    private boolean handleAnalyzeCommand(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sendMessage(sender, getMessage("player-only"));
+            return true;
+        }
+        
+        ItemStack handItem = player.getInventory().getItemInMainHand();
+        if (handItem.getType() == Material.AIR) {
+            sendMessage(player, getMessage("command.analyze.no-item"));
+            return true;
+        }
+        
+        ItemMeta meta = handItem.getItemMeta();
+        if (meta == null) {
+            sendMessage(player, getMessage("command.analyze.no-enchant"));
+            return true;
+        }
+        
+        Map<Enchantment, Integer> enchants;
+        
+        if (handItem.getType() == Material.ENCHANTED_BOOK && meta instanceof EnchantmentStorageMeta bookMeta) {
+            if (!bookMeta.hasStoredEnchants()) {
+                sendMessage(player, getMessage("command.analyze.no-enchant"));
+                return true;
+            }
+            enchants = bookMeta.getStoredEnchants();
+        } else {
+            if (!meta.hasEnchants()) {
+                sendMessage(player, getMessage("command.analyze.no-enchant"));
+                return true;
+            }
+            enchants = meta.getEnchants();
+        }
+        
+        sendMessage(player, getMessage("command.analyze.header"));
+        
+        for (Map.Entry<Enchantment, Integer> entry : enchants.entrySet()) {
+            Enchantment ench = entry.getKey();
+            int level = entry.getValue();
+            NamespacedKey key = ench.getKey();
+            String namespaceKey = key.getNamespace() + ":" + key.getKey();
+            sendMessage(player, getMessage("command.analyze.entry", "%key%", namespaceKey, "%level%", String.valueOf(level)));
+        }
+        
+        return true;
     }
     
     /**
@@ -400,6 +456,7 @@ public class RuneCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ColorUtils.translate(COLOR_HIGHLIGHT + "===== MoRuneSocketing 帮助 ====="));
         sender.sendMessage(ColorUtils.translate(COLOR_SUCCESS + "/mrs help " + COLOR_INFO + "- 显示帮助信息"));
         sender.sendMessage(ColorUtils.translate(COLOR_SUCCESS + "/mrs menu " + COLOR_INFO + "- 打开符文镶嵌菜单"));
+        sender.sendMessage(ColorUtils.translate(COLOR_SUCCESS + "/mrs analyze " + COLOR_INFO + "- 分析手中附魔物品"));
         
         if (sender.hasPermission(PERMISSION_ADMIN)) {
             sender.sendMessage(ColorUtils.translate(COLOR_SUCCESS + "/mrs give <玩家> <符文ID> [数量] " + COLOR_INFO + "- 给予符文石"));
@@ -434,6 +491,7 @@ public class RuneCommand implements CommandExecutor, TabCompleter {
         
         completions.add(CMD_HELP);
         completions.add(CMD_MENU);
+        completions.add(CMD_ANALYZE);
         
         if (sender.hasPermission(PERMISSION_ADMIN)) {
             completions.add(CMD_GIVE);

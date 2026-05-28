@@ -599,7 +599,7 @@ public class RuneManager {
         
         // 添加附魔光效
         if (buttonConfig.getBoolean("glow", false)) {
-            meta.addEnchant(Enchantment.DURABILITY, 1, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 1, true);
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         }
         
@@ -2047,7 +2047,14 @@ public class RuneManager {
         
         // 首先尝试通过Key获取
         try {
-            Enchantment enchantment = Enchantment.getByKey(org.bukkit.NamespacedKey.minecraft(lowerName));
+            NamespacedKey key;
+            if (lowerName.contains(":")) {
+                String[] parts = lowerName.split(":", 2);
+                key = new NamespacedKey(parts[0], parts[1]);
+            } else {
+                key = NamespacedKey.minecraft(lowerName);
+            }
+            Enchantment enchantment = Enchantment.getByKey(key);
             if (enchantment != null) {
                 return enchantment;
             }
@@ -2056,20 +2063,20 @@ public class RuneManager {
         
         // 回退到常用附魔名称映射
         return switch (lowerName) {
-            case "damage_all", "sharpness" -> Enchantment.DAMAGE_ALL;
-            case "damage_undead", "smite" -> Enchantment.DAMAGE_UNDEAD;
-            case "damage_arthropods", "bane_of_arthropods" -> Enchantment.DAMAGE_ARTHROPODS;
-            case "loot_bonus_mobs", "looting" -> Enchantment.LOOT_BONUS_MOBS;
-            case "loot_bonus_blocks", "fortune" -> Enchantment.LOOT_BONUS_BLOCKS;
-            case "durability", "unbreaking" -> Enchantment.DURABILITY;
-            case "dig_speed", "efficiency" -> Enchantment.DIG_SPEED;
-            case "protection_environmental", "protection" -> Enchantment.PROTECTION_ENVIRONMENTAL;
-            case "protection_fire", "fire_protection" -> Enchantment.PROTECTION_FIRE;
-            case "protection_fall", "feather_falling" -> Enchantment.PROTECTION_FALL;
-            case "protection_explosions", "blast_protection" -> Enchantment.PROTECTION_EXPLOSIONS;
-            case "protection_projectile", "projectile_protection" -> Enchantment.PROTECTION_PROJECTILE;
-            case "oxygen", "respiration" -> Enchantment.OXYGEN;
-            case "water_worker", "aqua_affinity" -> Enchantment.WATER_WORKER;
+            case "damage_all", "sharpness" -> Enchantment.SHARPNESS;
+            case "damage_undead", "smite" -> Enchantment.SMITE;
+            case "damage_arthropods", "bane_of_arthropods" -> Enchantment.BANE_OF_ARTHROPODS;
+            case "loot_bonus_mobs", "looting" -> Enchantment.LOOTING;
+            case "loot_bonus_blocks", "fortune" -> Enchantment.FORTUNE;
+            case "durability", "unbreaking" -> Enchantment.UNBREAKING;
+            case "dig_speed", "efficiency" -> Enchantment.EFFICIENCY;
+            case "protection_environmental", "protection" -> Enchantment.PROTECTION;
+            case "protection_fire", "fire_protection" -> Enchantment.FIRE_PROTECTION;
+            case "protection_fall", "feather_falling" -> Enchantment.FEATHER_FALLING;
+            case "protection_explosions", "blast_protection" -> Enchantment.BLAST_PROTECTION;
+            case "protection_projectile", "projectile_protection" -> Enchantment.PROJECTILE_PROTECTION;
+            case "oxygen", "respiration" -> Enchantment.RESPIRATION;
+            case "water_worker", "aqua_affinity" -> Enchantment.AQUA_AFFINITY;
             case "thorns" -> Enchantment.THORNS;
             case "depth_strider" -> Enchantment.DEPTH_STRIDER;
             case "frost_walker" -> Enchantment.FROST_WALKER;
@@ -2094,23 +2101,23 @@ public class RuneManager {
      */
     private static boolean applyRuneByKeyword(ItemStack item, ItemMeta itemMeta, String runeName) {
         if (runeName.contains(KEYWORD_SHARPNESS)) {
-            return applyEnchantment(item, itemMeta, Enchantment.DAMAGE_ALL, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.SHARPNESS, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         } else if (runeName.contains(KEYWORD_FORTUNE)) {
-            return applyEnchantment(item, itemMeta, Enchantment.LOOT_BONUS_BLOCKS, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.FORTUNE, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         } else if (runeName.contains(KEYWORD_UNBREAKING)) {
-            return applyEnchantment(item, itemMeta, Enchantment.DURABILITY, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.UNBREAKING, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         } else if (runeName.contains(KEYWORD_EFFICIENCY)) {
-            return applyEnchantment(item, itemMeta, Enchantment.DIG_SPEED, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.EFFICIENCY, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         } else if (runeName.contains(KEYWORD_SMITE)) {
-            return applyEnchantment(item, itemMeta, Enchantment.DAMAGE_UNDEAD, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.SMITE, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         } else if (runeName.contains(KEYWORD_BANE_OF_ARTHROPODS)) {
-            return applyEnchantment(item, itemMeta, Enchantment.DAMAGE_ARTHROPODS, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.BANE_OF_ARTHROPODS, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         } else if (runeName.contains(KEYWORD_LOOTING)) {
-            return applyEnchantment(item, itemMeta, Enchantment.LOOT_BONUS_MOBS, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.LOOTING, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         } else if (runeName.contains(KEYWORD_LUCK)) {
             return applyLuckBuff(item, itemMeta, runeName);
         } else if (runeName.contains(KEYWORD_PROTECTION)) {
-            return applyEnchantment(item, itemMeta, Enchantment.PROTECTION_ENVIRONMENTAL, 1, DEFAULT_ENCHANT_MAX_LEVEL);
+            return applyEnchantment(item, itemMeta, Enchantment.PROTECTION, 1, DEFAULT_ENCHANT_MAX_LEVEL);
         }
         
         return false;
@@ -2963,7 +2970,7 @@ public class RuneManager {
         // 隐藏各种信息
         meta.addItemFlags(ItemFlag.HIDE_PLACED_ON);
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
+        meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
         meta.addItemFlags(ItemFlag.HIDE_DESTROYS);
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);

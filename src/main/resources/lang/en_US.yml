@@ -58,6 +58,11 @@ command:
     success: "§aSuccessfully gave §e%player% §a%amount% §e%rune%§a!"
   reload:
     success: "§aConfiguration reloaded!"
+  analyze:
+    no-item: "§cYou are not holding any item!"
+    no-enchant: "§cThis item has no enchantments!"
+    header: "§6===== Enchantment Analysis ====="
+    entry: "§a%key% §7→ §eLevel: §f%level%"
 
 # ==================== Rune remover messages ====================
 rune-remover:

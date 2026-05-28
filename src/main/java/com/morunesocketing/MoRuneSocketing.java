@@ -3,6 +3,7 @@ package com.morunesocketing;
 import com.morunesocketing.database.DatabaseManager;
 import com.morunesocketing.economy.EconomyManager;
 import com.morunesocketing.util.SchedulerUtils;
+import com.tcoded.folialib.wrapper.task.WrappedTask;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -12,7 +13,7 @@ import java.io.File;
 public class MoRuneSocketing extends JavaPlugin {
     
     private static MoRuneSocketing instance;
-    private static final String PLUGIN_VERSION = "1.0.5-Release";
+    private static final String PLUGIN_VERSION = "1.0.6-Release";
     private static final String AUTHOR = "Allen_Linong";
     private static final String QQ = "1422163791";
     private RuneListener runeListener;
@@ -20,9 +21,8 @@ public class MoRuneSocketing extends JavaPlugin {
     private EconomyManager economyManager;
     private DataManager dataManager;
     private LanguageManager languageManager;
-    
-    // 随机成功率刷新任务
-    private Object randomSuccessRateTask;
+
+    private WrappedTask randomSuccessRateTask;
     
     @Override
     public void onEnable() {
@@ -164,37 +164,18 @@ public class MoRuneSocketing extends JavaPlugin {
      * 启动随机成功率刷新任务
      */
     private void startRandomSuccessRateTask() {
-        // 检查是否启用随机成功率
         if (!getConfig().getBoolean("features.random-success-rate.enabled", false)) {
             return;
         }
-        
-        // 检查是否需要刷新（启动时检查）
+
         checkAndRefreshSuccessRate();
-        
-        // 解析刷新间隔
+
         long intervalTicks = parseIntervalToTicks(
             getConfig().getString("features.random-success-rate.refresh-interval", "1h")
         );
-        
-        // 启动定时任务并保存引用（兼容Folia，使用反射）
-        if (SchedulerUtils.isFolia()) {
-            try {
-                Object scheduler = Bukkit.class.getMethod("getGlobalRegionScheduler").invoke(null);
-                randomSuccessRateTask = scheduler.getClass()
-                    .getMethod("runAtFixedRate", JavaPlugin.class, Runnable.class, long.class, long.class)
-                    .invoke(scheduler, this, (Runnable) () -> refreshRandomSuccessRate(), intervalTicks, intervalTicks);
-            } catch (Exception e) {
-                randomSuccessRateTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
-                    refreshRandomSuccessRate();
-                }, intervalTicks, intervalTicks);
-            }
-        } else {
-            randomSuccessRateTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
-                refreshRandomSuccessRate();
-            }, intervalTicks, intervalTicks);
-        }
-        
+
+        this.randomSuccessRateTask = SchedulerUtils.runTaskTimer(this::refreshRandomSuccessRate, intervalTicks, intervalTicks);
+
         getLogger().info("随机成功率刷新任务已启动，刷新间隔: " + 
             getConfig().getString("features.random-success-rate.refresh-interval", "1h") +
             " (服务端: " + (SchedulerUtils.isFolia() ? "Folia" : "Spigot/Paper") + ")");
@@ -274,17 +255,7 @@ public class MoRuneSocketing extends JavaPlugin {
      */
     private void stopRandomSuccessRateTask() {
         if (randomSuccessRateTask != null) {
-            try {
-                if (SchedulerUtils.isFolia()) {
-                    // Folia使用ScheduledTask
-                    randomSuccessRateTask.getClass().getMethod("cancel").invoke(randomSuccessRateTask);
-                } else {
-                    // Spigot/Paper使用BukkitTask
-                    ((org.bukkit.scheduler.BukkitTask) randomSuccessRateTask).cancel();
-                }
-            } catch (Exception e) {
-                getLogger().warning("停止随机成功率任务时出错: " + e.getMessage());
-            }
+            randomSuccessRateTask.cancel();
             randomSuccessRateTask = null;
         }
     }

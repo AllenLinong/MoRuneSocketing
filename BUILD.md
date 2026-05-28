@@ -2,7 +2,7 @@
 
 ## 插件信息
 - **插件名称**：MoRuneSocketing
-- **版本**：1.0.5-Release
+- **版本**：1.0.6-Release
 - **作者**：Allen_Linong
 
 ## 环境要求
@@ -38,7 +38,7 @@ mvn clean package -DskipTests
 #### 3. 获取构建产物
 构建完成后，插件 jar 文件位于：
 ```
-target/MoRuneSocketing-1.0.5-Release.jar
+target/MoRuneSocketing-1.0.6-Release.jar
 ```
 
 ### 方法二：使用 IDE 构建
@@ -62,7 +62,7 @@ target/MoRuneSocketing-1.0.5-Release.jar
 4. **获取构建产物**
    - 右键点击 target 目录下的 jar 文件
    - 选择 Open In -> Explorer
-   - 或直接在 `target/MoRuneSocketing-1.0.5-Release.jar` 获取
+   - 或直接在 `target/MoRuneSocketing-1.0.6-Release.jar` 获取
 
 #### Eclipse
 
@@ -115,7 +115,9 @@ MoRuneSocketing/
 │       │           ├── LanguageManager.java     # 语言管理
 │       │           ├── database/                # 数据库相关
 │       │           ├── economy/                 # 经济系统
-│       │           └── util/                    # 工具类
+│       │           └── util/                    # 工具类（含SchedulerUtils）
+│       │       └── tcoded/
+│       │           └── folialib/                # FoliaLib 多核心调度器
 │       └── resources/
 │           ├── plugin.yml        # 插件描述文件
 │           ├── config.yml        # 主配置文件
