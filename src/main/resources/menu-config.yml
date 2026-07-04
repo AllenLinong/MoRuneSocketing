@@ -1,0 +1,68 @@
+# 符文镶嵌菜单配置
+# 菜单基本设置
+Title: "§6§l符文镶嵌系统"
+Shape:
+  - 'XXXXXXXXX'
+  - 'XEXXRXXIX'
+  - 'XXXXXXXXX'
+
+# 按钮配置
+Buttons:
+  # 边框
+  'X':
+    material: "BLACK_STAINED_GLASS_PANE"
+    custom-model-data: 0  # 自定义材质ID（可选，0表示不使用）
+    name: " "
+    lore: []
+    can-place: false  # 是否允许放入物品
+    can-take: false   # 是否允许取出物品
+    is-static: true  # 静态按钮，不需要每次重新创建
+    is-equipment-slot: false  # 是否为装备槽
+    is-rune-slot: false       # 是否为符文槽
+    is-insert-button: false   # 是否为镶嵌按钮
+  
+  # 装备槽
+  'E':
+    material: "AIR" # 槽位配置必须用AIR空白，否则会存在刷物品。
+    custom-model-data: 0  # 自定义材质ID（可选，0表示不使用）
+    name: "§6§l装备槽"
+    lore:
+      - "§7将需要镶嵌符文的装备放入此槽"
+      - "§7支持: §f武器、盔甲、工具"
+    can-place: true
+    can-take: true
+    is-equipment-slot: true   # 是否为装备槽
+    is-rune-slot: false       # 是否为符文槽
+    is-insert-button: false   # 是否为镶嵌按钮
+  
+  # 符文槽
+  'R':
+    material: "AIR" # 槽位配置必须用AIR空白，否则会存在刷物品。
+    custom-model-data: 0  # 自定义材质ID（可选，0表示不使用）
+    name: "§6§l符文槽"
+    lore:
+      - "§7将符文放入此槽"
+      - "§7符文将被镶嵌到装备上"
+    can-place: true
+    can-take: true
+    is-equipment-slot: false  # 是否为装备槽
+    is-rune-slot: true        # 是否为符文槽
+    is-insert-button: false   # 是否为镶嵌按钮
+  
+  # 镶嵌按钮
+  'I':
+    material: "ANVIL"
+    custom-model-data: 0  # 自定义材质ID（可选，0表示不使用）
+    name: "§a§l确定"
+    lore:
+      - "§7点击开始镶嵌/拆卸符文"
+      - "§7成功率: §f%success-rate%"
+      - "§7镶嵌费用: §e%cost% 金币"
+      - "§7拆卸成功率百分百"
+      - "§7拆卸符文返还概率：§f%return-chance%%"
+    can-place: false
+    can-take: false
+    glow: true  # 附魔光效
+    is-equipment-slot: false  # 是否为装备槽
+    is-rune-slot: false       # 是否为符文槽
+    is-insert-button: true    # 是否为镶嵌按钮
