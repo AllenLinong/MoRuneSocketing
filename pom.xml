@@ -6,7 +6,7 @@
 
     <groupId>com.morunesocketing</groupId>
     <artifactId>MoRuneSocketing</artifactId>
-    <version>1.0.6-Release</version>
+    <version>1.0.8-Release</version>
     <packaging>jar</packaging>
 
     <name>MoRuneSocketing</name>

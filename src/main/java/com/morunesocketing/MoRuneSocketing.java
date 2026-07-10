@@ -13,7 +13,7 @@ import java.io.File;
 public class MoRuneSocketing extends JavaPlugin {
     
     private static MoRuneSocketing instance;
-    private static final String PLUGIN_VERSION = "1.0.7-Release";
+    private static final String PLUGIN_VERSION = "1.0.8-Release";
     private static final String AUTHOR = "Allen_Linong";
     private static final String QQ = "1422163791";
     private RuneListener runeListener;

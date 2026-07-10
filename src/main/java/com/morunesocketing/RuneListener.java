@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RuneListener implements Listener {
     
@@ -103,8 +104,8 @@ public class RuneListener implements Listener {
     
     // ==================== 缓存字段 ====================
     
-    private final Map<String, String> playerEquipmentCache = new HashMap<>();
-    private final Map<String, Set<PotionEffectType>> playerAppliedBuffs = new HashMap<>();
+    private final Map<String, String> playerEquipmentCache = new ConcurrentHashMap<>();
+    private final Map<String, Set<PotionEffectType>> playerAppliedBuffs = new ConcurrentHashMap<>();
     private final Map<UUID, Map<String, Integer>> itemBuffCache = new LinkedHashMap<UUID, Map<String, Integer>>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<UUID, Map<String, Integer>> eldest) {
@@ -139,28 +140,20 @@ public class RuneListener implements Listener {
     // ==================== 异步检查 ====================
     
     private void asyncCheckAllPlayers() {
-        // 在主线程中获取在线玩家列表并检查BUFF状态，避免异步线程安全问题
-        SchedulerUtils.runTask(() -> {
-            List<Player> onlinePlayers = new ArrayList<>(org.bukkit.Bukkit.getOnlinePlayers());
-            List<Player> playersToUpdate = new ArrayList<>();
-            
-            // 在主线程中检查所有玩家
-            for (Player player : onlinePlayers) {
-                // 检查装备变化或BUFF是否需要续期
-                if (hasEquipmentChanged(player) || shouldRenewBuffs(player)) {
-                    playersToUpdate.add(player);
+        // Folia requires entity state reads/writes to run on the entity scheduler.
+        List<Player> onlinePlayers = new ArrayList<>(org.bukkit.Bukkit.getOnlinePlayers());
+
+        for (Player player : onlinePlayers) {
+            SchedulerUtils.runTaskForEntity(player, () -> {
+                if (!player.isOnline()) {
+                    return;
                 }
-            }
-            
-            if (!playersToUpdate.isEmpty()) {
-                // 在主线程中应用BUFF更新
-                for (Player player : playersToUpdate) {
-                    if (player.isOnline()) {
-                        checkAndApplyBuffs(player);
-                    }
+
+                if (needsBuffUpdate(player)) {
+                    checkAndApplyBuffs(player);
                 }
-            }
-        });
+            });
+        }
     }
     
     private boolean needsBuffUpdate(Player player) {
@@ -534,13 +527,15 @@ public class RuneListener implements Listener {
         }
         
         UUID itemId = getItemUUID(item);
-        if (itemBuffCache.containsKey(itemId)) {
-            return itemBuffCache.get(itemId);
+        synchronized (itemBuffCache) {
+            if (itemBuffCache.containsKey(itemId)) {
+                return itemBuffCache.get(itemId);
+            }
+
+            Map<String, Integer> buffData = parseBuffDataFromItem(meta);
+            itemBuffCache.put(itemId, buffData);
+            return buffData;
         }
-        
-        Map<String, Integer> buffData = parseBuffDataFromItem(meta);
-        itemBuffCache.put(itemId, buffData);
-        return buffData;
     }
     
     private UUID getItemUUID(ItemStack item) {
