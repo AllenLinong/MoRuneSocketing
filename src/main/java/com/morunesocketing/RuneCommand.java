@@ -187,8 +187,7 @@ public class RuneCommand implements CommandExecutor, TabCompleter {
         }
         
         // 创建符文拆卸粉
-        ItemStack remover = createRuneRemoverItem();
-        remover.setAmount(amount);
+        ItemStack remover = RuneManager.createRuneRemoverItem(amount);
         
         // 给予玩家
         targetPlayer.getInventory().addItem(remover);

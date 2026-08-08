@@ -2,6 +2,7 @@ package com.morunesocketing;
 
 import com.morunesocketing.database.DatabaseManager;
 import com.morunesocketing.economy.EconomyManager;
+import com.morunesocketing.integration.CustomFishingIntegration;
 import com.morunesocketing.util.SchedulerUtils;
 import com.tcoded.folialib.wrapper.task.WrappedTask;
 import org.bukkit.Bukkit;
@@ -13,7 +14,7 @@ import java.io.File;
 public class MoRuneSocketing extends JavaPlugin {
     
     private static MoRuneSocketing instance;
-    private static final String PLUGIN_VERSION = "1.0.8-Release";
+    private static final String PLUGIN_VERSION = "1.0.9-Release";
     private static final String AUTHOR = "Allen_Linong";
     private static final String QQ = "1422163791";
     private RuneListener runeListener;
@@ -21,6 +22,7 @@ public class MoRuneSocketing extends JavaPlugin {
     private EconomyManager economyManager;
     private DataManager dataManager;
     private LanguageManager languageManager;
+    private CustomFishingIntegration customFishingIntegration;
 
     private WrappedTask randomSuccessRateTask;
     
@@ -60,6 +62,9 @@ public class MoRuneSocketing extends JavaPlugin {
         // 注册监听器
         runeListener = new RuneListener();
         getServer().getPluginManager().registerEvents(runeListener, this);
+
+        customFishingIntegration = new CustomFishingIntegration(this);
+        customFishingIntegration.enable();
         
         // 启动buff检查任务
         runeListener.startBuffCheckTask();
@@ -88,6 +93,10 @@ public class MoRuneSocketing extends JavaPlugin {
     
     @Override
     public void onDisable() {
+        if (customFishingIntegration != null) {
+            customFishingIntegration.disable();
+        }
+
         // 停止随机成功率刷新任务
         stopRandomSuccessRateTask();
         

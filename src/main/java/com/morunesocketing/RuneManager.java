@@ -77,6 +77,7 @@ public class RuneManager {
     private static final String NBT_CUSTOM_BUFF = "custom_buff";
     private static final String NBT_BUFF_DISPLAY_MAP = "buff_display_map"; // 存储buffId到显示名称的映射
     private static final String NBT_RUNE_TYPE = "rune_type";
+    private static final String NBT_RUNE_REMOVER = "rune_remover";
     private static final String NBT_NO_CRAFT = "no_craft";
     
     // 符文名称关键词
@@ -329,6 +330,64 @@ public class RuneManager {
             return new java.util.HashSet<>();
         }
         return runesConfig.getKeys(false);
+    }
+
+    public static ItemStack createRuneItem(String runeId, int amount) {
+        ConfigurationSection runeConfig = getRuneConfig(runeId);
+        if (runeConfig == null) {
+            return null;
+        }
+        return createRuneItem(runeConfig, Math.max(1, amount));
+    }
+
+    public static ItemStack createRuneRemoverItem(int amount) {
+        String materialName = MoRuneSocketing.getInstance().getConfig().getString("rune-remover.item", "SUGAR");
+        Material material = Material.getMaterial(materialName.toUpperCase());
+        if (material == null) {
+            material = Material.SUGAR;
+        }
+        ItemStack item = new ItemStack(material, Math.max(1, amount));
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
+        String name = MoRuneSocketing.getInstance().getConfig().getString("rune-remover.name", "?b?????");
+        meta.setDisplayName(ColorUtils.translate(name));
+        List<String> lore = MoRuneSocketing.getInstance().getConfig().getStringList("rune-remover.lore");
+        if (!lore.isEmpty()) {
+            List<String> coloredLore = new ArrayList<>();
+            for (String line : lore) {
+                coloredLore.add(ColorUtils.translate(line));
+            }
+            meta.setLore(coloredLore);
+        }
+        int customModelData = MoRuneSocketing.getInstance().getConfig().getInt("rune-remover.custom-model-data", 0);
+        if (customModelData > 0) {
+            meta.setCustomModelData(customModelData);
+        }
+        meta.getPersistentDataContainer().set(
+            new NamespacedKey(MoRuneSocketing.getInstance(), NBT_RUNE_REMOVER),
+            PersistentDataType.BYTE,
+            (byte) 1
+        );
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static String getExternalItemId(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) {
+            return null;
+        }
+        ItemMeta meta = item.getItemMeta();
+        String runeId = getNbtString(meta, NBT_RUNE_TYPE);
+        if (runeId != null && !runeId.isEmpty()) {
+            return "rune/" + runeId;
+        }
+        Byte remover = meta.getPersistentDataContainer().get(
+            new NamespacedKey(MoRuneSocketing.getInstance(), NBT_RUNE_REMOVER),
+            PersistentDataType.BYTE
+        );
+        return remover != null && remover == (byte) 1 ? "remover" : null;
     }
     
     // ==================== 菜单系统 ====================
@@ -2782,6 +2841,13 @@ public class RuneManager {
         }
         
         ItemMeta meta = item.getItemMeta();
+        Byte removerMarker = meta.getPersistentDataContainer().get(
+            new NamespacedKey(MoRuneSocketing.getInstance(), NBT_RUNE_REMOVER),
+            PersistentDataType.BYTE
+        );
+        if (removerMarker != null && removerMarker == (byte) 1) {
+            return true;
+        }
         String expectedName = MoRuneSocketing.getInstance().getConfig().getString("rune-remover.name", "§b符文拆卸粉");
         
         if (!meta.getDisplayName().equals(expectedName)) {

@@ -147,6 +147,10 @@ socketable-items:
   - "SHIELD"         # 盾牌
 
 # ==================== 符文拆卸粉配置 ====================
+integrations:
+  custom-fishing:
+    enabled: true
+
 rune-remover:
   # 符文拆卸粉物品ID
   item: "SUGAR"

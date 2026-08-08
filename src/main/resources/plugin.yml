@@ -1,9 +1,10 @@
 name: MoRuneSocketing
-version: 1.0.8-Release
+version: 1.0.9-Release
 author: MoRune
 main: com.morunesocketing.MoRuneSocketing
 api-version: 1.21
 folia-supported: true
+softdepend: [CustomFishing]
 
 commands:
   mrs:
