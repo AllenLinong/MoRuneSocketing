@@ -3,6 +3,7 @@ package com.morunesocketing;
 import com.morunesocketing.database.DatabaseManager;
 import com.morunesocketing.economy.EconomyManager;
 import com.morunesocketing.integration.CustomFishingIntegration;
+import com.morunesocketing.integration.MythicMobsIntegration;
 import com.morunesocketing.util.SchedulerUtils;
 import com.tcoded.folialib.wrapper.task.WrappedTask;
 import org.bukkit.Bukkit;
@@ -14,7 +15,7 @@ import java.io.File;
 public class MoRuneSocketing extends JavaPlugin {
     
     private static MoRuneSocketing instance;
-    private static final String PLUGIN_VERSION = "1.0.9-Release";
+    private static final String PLUGIN_VERSION = "1.1.0-Release";
     private static final String AUTHOR = "Allen_Linong";
     private static final String QQ = "1422163791";
     private RuneListener runeListener;
@@ -65,6 +66,11 @@ public class MoRuneSocketing extends JavaPlugin {
 
         customFishingIntegration = new CustomFishingIntegration(this);
         customFishingIntegration.enable();
+
+        if (Bukkit.getPluginManager().isPluginEnabled("MythicMobs")) {
+            getServer().getPluginManager().registerEvents(new MythicMobsIntegration(this), this);
+            getLogger().info("MythicMobs custom rune drops enabled.");
+        }
         
         // 启动buff检查任务
         runeListener.startBuffCheckTask();
