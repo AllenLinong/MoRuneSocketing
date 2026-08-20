@@ -922,7 +922,7 @@ public class RuneManager {
         }
         
         // 检查镶嵌成功率
-        int successRate = MoRuneSocketing.getInstance().getCurrentSuccessRate();
+        int successRate = getRuneSuccessRate(rune);
         boolean success = Math.random() * 100 < successRate;
         
         if (success && applyRuneToItem(equipment, rune)) {
@@ -1019,6 +1019,43 @@ public class RuneManager {
     /**
      * 消耗符文
      */
+    private static int getRuneSuccessRate(ItemStack rune) {
+        int defaultRate = MoRuneSocketing.getInstance().getCurrentSuccessRate();
+        if (rune == null || !rune.hasItemMeta()) {
+            return defaultRate;
+        }
+
+        ItemMeta runeMeta = rune.getItemMeta();
+        String runeType = getNbtString(runeMeta, NBT_RUNE_TYPE);
+        ConfigurationSection runeConfig = runeType != null ? getRuneConfig(runeType) : null;
+        if (runeConfig == null && runeMeta.hasDisplayName()) {
+            runeConfig = getRuneConfigByName(runeMeta.getDisplayName());
+        }
+        if (runeConfig == null || !runeConfig.contains("success-rate")) {
+            return defaultRate;
+        }
+
+        Object configuredValue = runeConfig.get("success-rate");
+        if (configuredValue == null || configuredValue.toString().trim().isEmpty()) {
+            return defaultRate;
+        }
+
+        try {
+            int configuredRate = configuredValue instanceof Number
+                ? ((Number) configuredValue).intValue()
+                : Integer.parseInt(configuredValue.toString().trim());
+            if (configuredRate == -1) {
+                return 0;
+            }
+            if (configuredRate == 0) {
+                return defaultRate;
+            }
+            return Math.max(0, Math.min(100, configuredRate));
+        } catch (NumberFormatException ignored) {
+            return defaultRate;
+        }
+    }
+
     private static void consumeRune(Inventory menu, ItemStack rune, int runeSlot) {
         if (!MoRuneSocketing.getInstance().getConfig().getBoolean("features.consume-rune", true)) {
             return;

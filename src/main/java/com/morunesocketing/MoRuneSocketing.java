@@ -8,14 +8,20 @@ import com.morunesocketing.util.SchedulerUtils;
 import com.tcoded.folialib.wrapper.task.WrappedTask;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MoRuneSocketing extends JavaPlugin {
     
     private static MoRuneSocketing instance;
-    private static final String PLUGIN_VERSION = "1.1.0-Release";
+    private static final String PLUGIN_VERSION = "1.1.1-Release";
     private static final String AUTHOR = "Allen_Linong";
     private static final String QQ = "1422163791";
     private RuneListener runeListener;
@@ -141,11 +147,48 @@ public class MoRuneSocketing extends JavaPlugin {
         if (!runesFile.exists()) {
             saveResource("runes.yml", false);
         }
+        migrateRuneSuccessRates(runesFile);
         
         // 保存菜单配置
         File menuConfigFile = new File(getDataFolder(), "menu-config.yml");
         if (!menuConfigFile.exists()) {
             saveResource("menu-config.yml", false);
+        }
+    }
+
+    private void migrateRuneSuccessRates(File runesFile) {
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(runesFile);
+        List<String> missingRuneIds = new ArrayList<>();
+        for (String runeId : config.getKeys(false)) {
+            ConfigurationSection section = config.getConfigurationSection(runeId);
+            if (section != null && !section.contains("success-rate")) {
+                missingRuneIds.add(runeId);
+            }
+        }
+        if (missingRuneIds.isEmpty()) {
+            return;
+        }
+
+        try {
+            List<String> output = new ArrayList<>();
+            boolean commentAdded = false;
+            for (String line : Files.readAllLines(runesFile.toPath(), StandardCharsets.UTF_8)) {
+                output.add(line);
+                if (!line.isEmpty() && !Character.isWhitespace(line.charAt(0))) {
+                    int separatorIndex = line.indexOf(':');
+                    if (separatorIndex > 0 && missingRuneIds.contains(line.substring(0, separatorIndex).trim())) {
+                        if (!commentAdded) {
+                            output.add("  # ????????%??1-100 ??????0?????????-1??0%???");
+                            commentAdded = true;
+                        }
+                        output.add("  success-rate: -1");
+                    }
+                }
+            }
+            Files.write(runesFile.toPath(), output, StandardCharsets.UTF_8);
+            getLogger().info("Added success-rate: -1 to " + missingRuneIds.size() + " legacy rune configurations.");
+        } catch (IOException e) {
+            getLogger().warning("???????????: " + e.getMessage());
         }
     }
     
