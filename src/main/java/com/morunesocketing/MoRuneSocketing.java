@@ -21,7 +21,7 @@ import java.util.List;
 public class MoRuneSocketing extends JavaPlugin {
     
     private static MoRuneSocketing instance;
-    private static final String PLUGIN_VERSION = "1.1.1-Release";
+    private static final String PLUGIN_VERSION = "1.1.2-Release";
     private static final String AUTHOR = "Allen_Linong";
     private static final String QQ = "1422163791";
     private RuneListener runeListener;
@@ -178,15 +178,15 @@ public class MoRuneSocketing extends JavaPlugin {
                     int separatorIndex = line.indexOf(':');
                     if (separatorIndex > 0 && missingRuneIds.contains(line.substring(0, separatorIndex).trim())) {
                         if (!commentAdded) {
-                            output.add("  # ????????%??1-100 ??????0?????????-1??0%???");
+                            output.add("  # ????????%??1-100 ??????0?-1 ????????");
                             commentAdded = true;
                         }
-                        output.add("  success-rate: -1");
+                        output.add("  success-rate: 0");
                     }
                 }
             }
             Files.write(runesFile.toPath(), output, StandardCharsets.UTF_8);
-            getLogger().info("Added success-rate: -1 to " + missingRuneIds.size() + " legacy rune configurations.");
+            getLogger().info("Added success-rate: 0 to " + missingRuneIds.size() + " legacy rune configurations.");
         } catch (IOException e) {
             getLogger().warning("???????????: " + e.getMessage());
         }

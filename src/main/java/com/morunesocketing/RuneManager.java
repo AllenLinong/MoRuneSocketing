@@ -1044,10 +1044,7 @@ public class RuneManager {
             int configuredRate = configuredValue instanceof Number
                 ? ((Number) configuredValue).intValue()
                 : Integer.parseInt(configuredValue.toString().trim());
-            if (configuredRate == -1) {
-                return 0;
-            }
-            if (configuredRate == 0) {
+            if (configuredRate == -1 || configuredRate == 0) {
                 return defaultRate;
             }
             return Math.max(0, Math.min(100, configuredRate));

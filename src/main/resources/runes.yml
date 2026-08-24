@@ -5,8 +5,8 @@ sharpness:  # 符文ID
   name: "§6锋利符文"  # 符文名字
   material: "PAPER"  # 符文材质
   custom-model-data: 0  # 自定义材质ID（可选）
-  # Rune-specific success rate (%): 1-100 overrides main config, 0/empty uses main config, -1 means 0%
-  success-rate: -1
+  # ????????%??1-100 ??????0?-1 ????????
+  success-rate: 0
   lore:
     - "§7镶嵌效果: §f增加武器锋利等级"
     - "§7最高等级: §f10级"
