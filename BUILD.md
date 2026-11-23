@@ -2,7 +2,7 @@
 
 ## 插件信息
 - **插件名称**：MoRuneSocketing
-- **版本**：1.0.6-Release
+- **版本**：1.2.1
 - **作者**：Allen_Linong
 
 ## 环境要求
@@ -38,7 +38,7 @@ mvn clean package -DskipTests
 #### 3. 获取构建产物
 构建完成后，插件 jar 文件位于：
 ```
-target/MoRuneSocketing-1.0.6-Release.jar
+target/MoRuneSocketing-1.2.1.jar
 ```
 
 ### 方法二：使用 IDE 构建
@@ -62,7 +62,7 @@ target/MoRuneSocketing-1.0.6-Release.jar
 4. **获取构建产物**
    - 右键点击 target 目录下的 jar 文件
    - 选择 Open In -> Explorer
-   - 或直接在 `target/MoRuneSocketing-1.0.6-Release.jar` 获取
+   - 或直接在 `target/MoRuneSocketing-1.2.1.jar` 获取
 
 #### Eclipse
 

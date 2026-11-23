@@ -3,6 +3,7 @@ package com.morunesocketing;
 import com.morunesocketing.database.DatabaseManager;
 import com.morunesocketing.economy.EconomyManager;
 import com.morunesocketing.integration.CustomFishingIntegration;
+import com.morunesocketing.integration.EnchantmentSlotsIntegration;
 import com.morunesocketing.integration.MythicMobsIntegration;
 import com.morunesocketing.util.SchedulerUtils;
 import com.tcoded.folialib.wrapper.task.WrappedTask;
@@ -21,7 +22,7 @@ import java.util.List;
 public class MoRuneSocketing extends JavaPlugin {
     
     private static MoRuneSocketing instance;
-    private static final String PLUGIN_VERSION = "1.1.2-Release";
+    private static final String PLUGIN_VERSION = "1.2.1";
     private static final String AUTHOR = "Allen_Linong";
     private static final String QQ = "1422163791";
     private RuneListener runeListener;
@@ -30,6 +31,7 @@ public class MoRuneSocketing extends JavaPlugin {
     private DataManager dataManager;
     private LanguageManager languageManager;
     private CustomFishingIntegration customFishingIntegration;
+    private EnchantmentSlotsIntegration enchantmentSlotsIntegration;
 
     private WrappedTask randomSuccessRateTask;
     
@@ -61,6 +63,9 @@ public class MoRuneSocketing extends JavaPlugin {
         
         // 初始化经济系统
         initializeEconomy();
+
+        enchantmentSlotsIntegration = new EnchantmentSlotsIntegration(this);
+        enchantmentSlotsIntegration.initialize();
         
         // 注册命令
         getCommand("mrs").setExecutor(new RuneCommand());
@@ -422,6 +427,10 @@ public class MoRuneSocketing extends JavaPlugin {
     public LanguageManager getLanguageManager() {
         return languageManager;
     }
+
+    public EnchantmentSlotsIntegration getEnchantmentSlotsIntegration() {
+        return enchantmentSlotsIntegration;
+    }
     
     /**
      * 重载插件配置
@@ -440,6 +449,8 @@ public class MoRuneSocketing extends JavaPlugin {
         
         // 重新加载菜单配置
         RuneManager.reloadMenuConfig();
+
+        enchantmentSlotsIntegration.initialize();
         
         // 停止现有任务
         stopRandomSuccessRateTask();

@@ -1,5 +1,7 @@
 package com.morunesocketing;
 
+import com.morunesocketing.integration.EnchantmentSlotsIntegration;
+import com.morunesocketing.menu.RuneMenuHolder;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
@@ -10,6 +12,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryAction;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -409,21 +413,47 @@ public class RuneManager {
             return;
         }
         
-        // 缓存玩家打开菜单时的成功率（解决菜单显示不同步问题）
-        int currentRate = MoRuneSocketing.getInstance().getCurrentSuccessRate();
-        MoRuneSocketing.getInstance().getDataManager().cachePlayerMenuRate(player.getUniqueId(), currentRate);
-        
-        // 记录玩家打开菜单（用于实时刷新）
-        MoRuneSocketing.getInstance().getDataManager().addOpenMenuPlayer(player);
-        
         String menuTitle = menuConfig.getString("Title", "§8§l符文镶嵌系统");
         List<String> shape = menuConfig.getStringList("Shape");
         int menuSize = calculateMenuSize(shape);
+        int equipmentSlot = findEquipmentSlot(menuConfig);
+        int runeSlot = findRuneSlot(menuConfig);
+        int insertSlot = findInsertButtonSlot(menuConfig);
+        if (shape.size() > MAX_MENU_ROWS || shape.stream().anyMatch(row -> row.length() > MENU_COLUMNS)
+                || !isMenuSlot(equipmentSlot, menuSize) || !isMenuSlot(runeSlot, menuSize)
+                || !isMenuSlot(insertSlot, menuSize) || equipmentSlot == runeSlot
+                || equipmentSlot == insertSlot || runeSlot == insertSlot) {
+            sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("menu.config-error"));
+            return;
+        }
         
-        Inventory menu = player.getServer().createInventory(null, menuSize, menuTitle);
+        RuneMenuHolder holder = new RuneMenuHolder(menuConfig, equipmentSlot, runeSlot, insertSlot);
+        Inventory menu = player.getServer().createInventory(holder, menuSize, menuTitle);
+        holder.bind(menu);
+        int currentRate = MoRuneSocketing.getInstance().getCurrentSuccessRate();
+        MoRuneSocketing.getInstance().getDataManager().cachePlayerMenuRate(player.getUniqueId(), currentRate);
         setupInsertMenu(menu, menuConfig, player);
+        // Input slots are always empty, even if their configured material is not AIR.
+        menu.setItem(equipmentSlot, null);
+        menu.setItem(runeSlot, null);
+        for (int slot = 0; slot < menu.getSize(); slot++) {
+            holder.recordDecoration(slot, menu.getItem(slot));
+        }
         
         player.openInventory(menu);
+        // Opening a second menu first closes the old one; register afterwards.
+        if (player.getOpenInventory().getTopInventory() == menu && !holder.isClosed()) {
+            MoRuneSocketing.getInstance().getDataManager().cachePlayerMenuRate(player.getUniqueId(), currentRate);
+            MoRuneSocketing.getInstance().getDataManager().addOpenMenuPlayer(player);
+        }
+    }
+
+    public static boolean isRuneMenu(Inventory inventory) {
+        return inventory != null && inventory.getHolder() instanceof RuneMenuHolder;
+    }
+
+    private static boolean isMenuSlot(int slot, int size) {
+        return slot >= 0 && slot < size;
     }
     
     /**
@@ -581,7 +611,7 @@ public class RuneManager {
             for (int col = 0; col < rowStr.length(); col++) {
                 char symbol = rowStr.charAt(col);
                 
-                if (symbol == SYMBOL_EMPTY) {
+                if (symbol == SYMBOL_EMPTY || (menu.getHolder() instanceof RuneMenuHolder holder && holder.isInput(slot))) {
                     slot++;
                     continue;
                 }
@@ -774,66 +804,107 @@ public class RuneManager {
      * @param event 库存点击事件
      */
     public static void handleInsertMenuClick(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        Inventory menu = event.getInventory();
-        int slot = event.getRawSlot();
-        
-        // 检查是否点击了菜单内的槽位
-        if (slot < 0 || slot >= menu.getSize()) {
+        if (event.isCancelled() || !(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        
-        ConfigurationSection menuConfig = getMenuConfig();
-        if (menuConfig == null) {
+        Inventory menu = event.getInventory();
+        int slot = event.getRawSlot();
+        if (!(menu.getHolder() instanceof RuneMenuHolder holder)) {
+            return;
+        }
+        if (holder.isClosed()) {
             event.setCancelled(true);
             return;
         }
-        
-        // 获取关键槽位位置（支持自定义配置）
-        int equipmentSlot = findEquipmentSlot(menuConfig);
-        int runeSlot = findRuneSlot(menuConfig);
-        int insertButtonSlot = findInsertButtonSlot(menuConfig);
-        
-        // 获取点击的物品和按钮类型
-        ItemStack clickedItem = event.getCurrentItem();
-        String buttonType = getButtonType(clickedItem);
-        
-        // 处理镶嵌按钮点击
-        if (isInsertButtonClicked(buttonType, slot, insertButtonSlot)) {
-            handleInsertButtonAction(event, player, menu, equipmentSlot, runeSlot);
+        // Double-click collection can pull GUI decorations from any inventory.
+        if (event.getAction() == InventoryAction.COLLECT_TO_CURSOR
+                || event.getClick() == ClickType.DOUBLE_CLICK) {
+            event.setCancelled(true);
             return;
         }
-        
-        // 处理装备槽和符文槽交互
-        if (slot == equipmentSlot || slot == runeSlot) {
-            handleSlotInteraction(event, slot, equipmentSlot, runeSlot);
+        if (event.isShiftClick() || event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+            event.setCancelled(true);
+            handleShiftTransfer(event, player, menu, holder);
             return;
         }
-        
-        // 其他槽位禁止交互
+        // Ordinary operations in the player's inventory do not affect the GUI.
+        if (!isMenuSlot(slot, menu.getSize())) {
+            return;
+        }
         event.setCancelled(true);
-    }
-    
-    /**
-     * 获取按钮类型
-     */
-    private static String getButtonType(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) {
-            return null;
+        // Hotbar keys, F, creative cloning and unknown actions never bypass validation.
+        if (event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT) {
+            return;
         }
-        
-        ItemMeta meta = item.getItemMeta();
-        return meta.getPersistentDataContainer().get(
-            new NamespacedKey(MoRuneSocketing.getInstance(), NBT_MENU_BUTTON),
-            PersistentDataType.STRING
-        );
+        if (slot == holder.insertSlot()) {
+            handleInsertButtonAction(event, player, menu, holder.equipmentSlot(), holder.runeSlot());
+        } else if (holder.isInput(slot) && isOrdinarySlotAction(event.getAction())) {
+            ItemStack cursor = event.getCursor();
+            if (!isValidItem(cursor) || acceptsInput(holder, slot, cursor)) {
+                event.setCancelled(false);
+            }
+        }
     }
-    
-    /**
-     * 检查是否点击了镶嵌按钮
-     */
-    private static boolean isInsertButtonClicked(String buttonType, int slot, int insertButtonSlot) {
-        return "I".equals(buttonType) || slot == insertButtonSlot;
+
+    private static boolean isOrdinarySlotAction(InventoryAction action) {
+        return action != null && switch (action) {
+            case PICKUP_ALL, PICKUP_SOME, PICKUP_HALF, PICKUP_ONE,
+                    PLACE_ALL, PLACE_SOME, PLACE_ONE, SWAP_WITH_CURSOR, NOTHING -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean acceptsInput(RuneMenuHolder holder, int slot, ItemStack item) {
+        return slot == holder.equipmentSlot() ? isEquipment(item) : isRune(item) || isRuneRemover(item);
+    }
+
+    private static void handleShiftTransfer(InventoryClickEvent event, Player player,
+                                            Inventory menu, RuneMenuHolder holder) {
+        ItemStack source = event.getCurrentItem();
+        if (!isValidItem(source)) {
+            return;
+        }
+        int slot = event.getRawSlot();
+        if (isMenuSlot(slot, menu.getSize())) {
+            if (!holder.isInput(slot)) {
+                return;
+            }
+            // addItem may change its argument; use a copy and retain overflow in the input.
+            Map<Integer, ItemStack> leftover = player.getInventory().addItem(source.clone());
+            menu.setItem(slot, leftover.isEmpty() ? null : leftover.values().iterator().next());
+            return;
+        }
+        if (slot < menu.getSize() || event.getClickedInventory() != player.getInventory()) {
+            return;
+        }
+        int destination;
+        if (isRune(source) || isRuneRemover(source)) {
+            destination = holder.runeSlot();
+        } else if (isEquipment(source)) {
+            destination = holder.equipmentSlot();
+        } else {
+            return;
+        }
+        ItemStack current = menu.getItem(destination);
+        if (isValidItem(current) && !current.isSimilar(source)) {
+            return;
+        }
+        int capacity = Math.min(source.getMaxStackSize(), menu.getMaxStackSize());
+        int present = isValidItem(current) ? current.getAmount() : 0;
+        int moved = Math.min(source.getAmount(), Math.max(0, capacity - present));
+        if (moved == 0) {
+            return;
+        }
+        ItemStack inserted = source.clone();
+        inserted.setAmount(present + moved);
+        menu.setItem(destination, inserted);
+        if (moved == source.getAmount()) {
+            event.setCurrentItem(null);
+        } else {
+            ItemStack remaining = source.clone();
+            remaining.setAmount(source.getAmount() - moved);
+            event.setCurrentItem(remaining);
+        }
     }
     
     /**
@@ -890,6 +961,27 @@ public class RuneManager {
             return;
         }
         
+        // 在副本上准备实际结果，所有校验通过后才扣费或消耗符文。
+        ItemStack result = equipment.clone();
+        if (!applyRuneToItem(result, rune)) {
+            sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("insert-failed"));
+            playSound(player, false);
+            return;
+        }
+        EnchantmentSlotsIntegration.CheckResult slotCheck = MoRuneSocketing.getInstance()
+            .getEnchantmentSlotsIntegration().check(player, equipment, result);
+        if (slotCheck.status() != EnchantmentSlotsIntegration.Status.ALLOWED) {
+            LanguageManager language = MoRuneSocketing.getInstance().getLanguageManager();
+            String message = slotCheck.status() == EnchantmentSlotsIntegration.Status.LIMIT_REACHED
+                ? language.getMessage("enchantment-slots.limit-reached",
+                    "%used%", String.valueOf(slotCheck.usedSlots()),
+                    "%limit%", String.valueOf(slotCheck.totalSlots()))
+                : language.getMessage("enchantment-slots.unavailable");
+            sendMessage(player, message);
+            playSound(player, false);
+            return;
+        }
+
         // 检查经济系统
         boolean deductOnSuccessOnly = MoRuneSocketing.getInstance().getConfig()
             .getBoolean("socketing.economy.deduct-on-success-only", false);
@@ -908,7 +1000,11 @@ public class RuneManager {
                     playSound(player, false);
                     return;
                 }
-                MoRuneSocketing.getInstance().getEconomyManager().withdraw(player, cost);
+                if (!MoRuneSocketing.getInstance().getEconomyManager().withdraw(player, cost)) {
+                    sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("payment-failed"));
+                    playSound(player, false);
+                    return;
+                }
             } else {
                 if (!MoRuneSocketing.getInstance().getEconomyManager().hasEnough(player, cost)) {
                     String insufficientMessage = MoRuneSocketing.getInstance().getLanguageManager()
@@ -925,20 +1021,24 @@ public class RuneManager {
         int successRate = getRuneSuccessRate(rune);
         boolean success = Math.random() * 100 < successRate;
         
-        if (success && applyRuneToItem(equipment, rune)) {
+        if (success) {
             // 镶嵌成功
             if (deductOnSuccessOnly && MoRuneSocketing.getInstance().getEconomyManager() != null && 
                 MoRuneSocketing.getInstance().getEconomyManager().isEnabled()) {
                 // 只在成功时扣除金币
-                MoRuneSocketing.getInstance().getEconomyManager().withdraw(player, 
-                    MoRuneSocketing.getInstance().getEconomyManager().getInsertCost());
+                if (!MoRuneSocketing.getInstance().getEconomyManager().withdraw(player,
+                        MoRuneSocketing.getInstance().getEconomyManager().getInsertCost())) {
+                    sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("payment-failed"));
+                    playSound(player, false);
+                    return;
+                }
             }
             
             sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("insert-success"));
             playSound(player, true);
             consumeRune(menu, rune, runeSlot);
-            menu.setItem(equipmentSlot, equipment);
-        } else if (!success) {
+            menu.setItem(equipmentSlot, result);
+        } else {
             String failedMessage = MoRuneSocketing.getInstance().getLanguageManager()
                 .getMessage("insert-failed");
             sendMessage(player, failedMessage + " (成功率: " + successRate + "%)");
@@ -946,11 +1046,6 @@ public class RuneManager {
             if (MoRuneSocketing.getInstance().getConfig().getBoolean("features.consume-rune-on-fail", true)) {
                 consumeRune(menu, rune, runeSlot);
             }
-        } else {
-            String failedMessage = MoRuneSocketing.getInstance().getLanguageManager()
-                .getMessage("insert-failed");
-            sendMessage(player, failedMessage);
-            playSound(player, false);
         }
     }
     
@@ -1066,117 +1161,26 @@ public class RuneManager {
     }
     
     /**
-     * 处理槽位交互
-     */
-    private static void handleSlotInteraction(InventoryClickEvent event, int slot, 
-                                               int equipmentSlot, int runeSlot) {
-        Player player = (Player) event.getWhoClicked();
-        ItemStack cursor = event.getCursor();
-        ItemStack current = event.getCurrentItem();
-        
-        // 取出操作
-        if (isTakeOutOperation(current, cursor)) {
-            event.setCancelled(false);
-            return;
-        }
-        
-        // 放入操作
-        if (isPutInOperation(cursor)) {
-            handlePutInOperation(event, player, slot, equipmentSlot, runeSlot, cursor);
-        }
-    }
-    
-    /**
-     * 检查是否是取出操作
-     */
-    private static boolean isTakeOutOperation(ItemStack current, ItemStack cursor) {
-        return current != null && current.getType() != Material.AIR && 
-               (cursor == null || cursor.getType() == Material.AIR);
-    }
-    
-    /**
-     * 检查是否是放入操作
-     */
-    private static boolean isPutInOperation(ItemStack cursor) {
-        return cursor != null && cursor.getType() != Material.AIR;
-    }
-    
-    /**
-     * 处理放入操作
-     */
-    private static void handlePutInOperation(InventoryClickEvent event, Player player, 
-                                              int slot, int equipmentSlot, int runeSlot, 
-                                              ItemStack cursor) {
-        if (slot == equipmentSlot) {
-            handleEquipmentPutIn(event, player, cursor);
-        } else if (slot == runeSlot) {
-            handleRunePutIn(event, player, cursor);
-        }
-    }
-    
-    /**
-     * 处理装备放入
-     */
-    private static void handleEquipmentPutIn(InventoryClickEvent event, Player player, ItemStack cursor) {
-        if (isEquipment(cursor)) {
-            event.setCancelled(false);
-        } else {
-            sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("menu.invalid-equipment"));
-            event.setCancelled(true);
-        }
-    }
-    
-    private static void handleRunePutIn(InventoryClickEvent event, Player player, ItemStack cursor) {
-        if (isRune(cursor) || isRuneRemover(cursor)) {
-            event.setCancelled(false);
-        } else {
-            sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("menu.invalid-rune"));
-            event.setCancelled(true);
-        }
-    }
-    
-    /**
      * 处理菜单拖放事件
      * @param event 库存拖放事件
      */
     public static void handleMenuDrag(InventoryDragEvent event) {
-        ConfigurationSection menuConfig = getMenuConfig();
-        if (menuConfig == null) {
+        if (event.isCancelled() || !(event.getInventory().getHolder() instanceof RuneMenuHolder holder)) {
+            return;
+        }
+        if (holder.isClosed()) {
             event.setCancelled(true);
             return;
         }
-        
-        // 从配置中获取装备槽和符文槽位置（支持自定义配置）
-        int equipmentSlot = findEquipmentSlot(menuConfig);
-        int runeSlot = findRuneSlot(menuConfig);
-        
-        // 获取拖放的物品
-        ItemStack cursor = event.getOldCursor();
-        
+        // Validate every affected slot before allowing a drag across inventories.
         for (int slot : event.getRawSlots()) {
-            if (slot == equipmentSlot) {
-                if (isEquipment(cursor)) {
-                    event.setCancelled(false);
-                } else {
-                    event.setCancelled(true);
-                    if (event.getWhoClicked() instanceof Player player) {
-                        sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("menu.cannot-socket-rune"));
-                    }
-                }
-                return;
-            } else if (slot == runeSlot) {
-                if (isRune(cursor) || isRuneRemover(cursor)) {
-                    event.setCancelled(false);
-                } else {
-                    event.setCancelled(true);
-                    if (event.getWhoClicked() instanceof Player player) {
-                        sendMessage(player, MoRuneSocketing.getInstance().getLanguageManager().getMessage("menu.invalid-rune"));
-                    }
-                }
+            if (isMenuSlot(slot, event.getInventory().getSize())
+                    && (!holder.isInput(slot) || !isValidItem(event.getOldCursor())
+                    || !acceptsInput(holder, slot, event.getOldCursor()))) {
+                event.setCancelled(true);
                 return;
             }
         }
-        event.setCancelled(true);
     }
     
     /**
@@ -1185,7 +1189,11 @@ public class RuneManager {
      */
     public static void handleMenuClose(InventoryCloseEvent event) {
         Inventory menu = event.getInventory();
-        Player player = (Player) event.getPlayer();
+        if (!(event.getPlayer() instanceof Player player)
+                || !(menu.getHolder() instanceof RuneMenuHolder holder) || holder.isClosed()) {
+            return;
+        }
+        holder.close();
         
         // 清除玩家的菜单成功率缓存
         if (MoRuneSocketing.getInstance().getDataManager() != null) {
@@ -1194,16 +1202,18 @@ public class RuneManager {
             MoRuneSocketing.getInstance().getDataManager().removeOpenMenuPlayer(player.getUniqueId());
         }
         
-        ConfigurationSection menuConfig = getMenuConfig();
-        if (menuConfig == null) {
-            return;
+        // Recover items in ANY slot; only decorations created for this menu are excluded.
+        for (int slot = 0; slot < menu.getSize(); slot++) {
+            ItemStack item = menu.getItem(slot);
+            if (!isValidItem(item)) {
+                continue;
+            }
+            boolean decoration = holder.isDecoration(slot, item);
+            menu.setItem(slot, null);
+            if (!decoration) {
+                giveOrDrop(player, item);
+            }
         }
-        
-        // 从配置中获取装备槽和符文槽位置（支持自定义配置）
-        int equipmentSlot = findEquipmentSlot(menuConfig);
-        int runeSlot = findRuneSlot(menuConfig);
-        
-        returnItemsToPlayer(player, menu, equipmentSlot, runeSlot);
     }
     
     /**
@@ -1222,9 +1232,7 @@ public class RuneManager {
             return;
         }
         
-        // 获取菜单配置
-        ConfigurationSection menuConfig = getMenuConfig();
-        if (menuConfig == null) {
+        if (!(topInventory.getHolder() instanceof RuneMenuHolder holder) || holder.isClosed()) {
             return;
         }
         
@@ -1232,30 +1240,42 @@ public class RuneManager {
         int currentRate = MoRuneSocketing.getInstance().getCurrentSuccessRate();
         MoRuneSocketing.getInstance().getDataManager().cachePlayerMenuRate(player.getUniqueId(), currentRate);
         
-        // 重新设置菜单内容
-        setupInsertMenu(topInventory, menuConfig, player);
+        // Refresh the existing button's lore only. Never clear or rebuild an open inventory.
+        int slot = holder.insertSlot();
+        ItemStack button = topInventory.getItem(slot);
+        if (!holder.isDecoration(slot, button) || !button.hasItemMeta()) {
+            return;
+        }
+        ConfigurationSection config = holder.config();
+        List<String> shape = config.getStringList("Shape");
+        if (shape.isEmpty() || slot / MENU_COLUMNS >= shape.size()
+                || slot % MENU_COLUMNS >= shape.get(slot / MENU_COLUMNS).length()) {
+            return;
+        }
+        String symbol = String.valueOf(shape.get(slot / MENU_COLUMNS).charAt(slot % MENU_COLUMNS));
+        ConfigurationSection buttonConfig = config.getConfigurationSection("Buttons." + symbol);
+        if (buttonConfig == null) {
+            return;
+        }
+        ItemStack updated = button.clone();
+        ItemMeta meta = updated.getItemMeta();
+        List<String> lore = new ArrayList<>();
+        for (String line : buttonConfig.getStringList("lore")) {
+            lore.add(ColorUtils.translate(replaceVariables(line, config, player)));
+        }
+        meta.setLore(lore);
+        updated.setItemMeta(meta);
+        topInventory.setItem(slot, updated);
+        holder.recordDecoration(slot, updated);
     }
     
     /**
      * 将物品退回给玩家
      */
-    private static void returnItemsToPlayer(Player player, Inventory menu, int... slots) {
-        for (int slot : slots) {
-            ItemStack item = menu.getItem(slot);
-            if (isValidItem(item)) {
-                // 检查背包是否已满
-                Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
-                
-                // 如果背包满了，将剩余物品掉落在地面上
-                if (!leftover.isEmpty()) {
-                    for (ItemStack remaining : leftover.values()) {
-                        player.getWorld().dropItemNaturally(player.getLocation(), remaining);
-                    }
-                }
-                
-                // 清空菜单槽位
-                menu.setItem(slot, null);
-            }
+    private static void giveOrDrop(Player player, ItemStack item) {
+        Map<Integer, ItemStack> leftover = player.getInventory().addItem(item.clone());
+        for (ItemStack remaining : leftover.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), remaining);
         }
     }
     

@@ -1,10 +1,10 @@
 name: MoRuneSocketing
-version: 1.1.2-Release
+version: 1.2.1
 author: MoRune
 main: com.morunesocketing.MoRuneSocketing
 api-version: 1.21
 folia-supported: true
-softdepend: [CustomFishing, MythicMobs]
+softdepend: [CustomFishing, MythicMobs, EnchantmentSlots]
 
 commands:
   mrs:

@@ -170,6 +170,9 @@ public class LanguageManager {
         messages.put("max-buff-runes", "§c该装备已达到最大buff符文数量限制！");
         messages.put("missing-enchantment", "§c该装备需要先拥有相同附魔才能使用此符文！");
         messages.put("insufficient-funds", "§c你的金币不足！需要 §e%cost% §c金币");
+        messages.put("payment-failed", "§c扣费失败，请稍后重试。装备和符文已保留。");
+        messages.put("enchantment-slots.limit-reached", "§c附魔槽位不足！本次附魔后将占用 %used% 槽，装备总槽位为 %limit%。");
+        messages.put("enchantment-slots.unavailable", "§c暂时无法检查附魔槽位，请联系管理员。装备和符文已保留。");
         messages.put("invalid-rune-or-item", "§c符文或装备无效！");
         messages.put("invalid-rune-config", "§c符文配置无效，无法镶嵌！");
         messages.put("max-enchantment-level", "§c该装备的相同附魔已达到该符文的最大等级限制！");
@@ -214,7 +217,12 @@ public class LanguageManager {
      * @return 消息内容
      */
     public String getMessage(String path) {
-        return messages.getOrDefault(path, "§c消息未找到: " + path);
+        String message = messages.get(path);
+        if (message == null && langConfig != null) {
+            // Existing language files also receive new bundled message defaults.
+            message = langConfig.getString(path);
+        }
+        return message != null ? message : "§c消息未找到: " + path;
     }
     
     /**

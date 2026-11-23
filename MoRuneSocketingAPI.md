@@ -3,7 +3,7 @@
 ## 插件信息
 
 - **插件名称**：MoRuneSocketing
-- **版本**：1.0.6-Release
+- **版本**：1.2.1
 - **API 版本**：Paper 1.21.1-R0.1-SNAPSHOT
 - **Java 要求**：JDK 21+
 - **作者**：Allen\_Linong
@@ -259,12 +259,16 @@ rune-remover:
 <dependency>
     <groupId>com.morunesocketing</groupId>
     <artifactId>MoRuneSocketing</artifactId>
-    <version>1.0.6-Release</version>
+    <version>1.2.1</version>
     <scope>provided</scope>
 </dependency>
 ```
 
 ## 版本历史
+
+- **1.2.1**：修复 Shift 快捷放入、成功率刷新和关闭菜单时的物品丢失；菜单使用独立库存标识，支持配置重载后返还及背包满时掉落，并拦截绕过输入校验的快捷操作。
+
+- **1.2.0**：自动兼容 EnchantmentSlots 的附魔权重、扩槽与忽略规则；附魔在扣费和符文消耗前校验，扣费失败不提交结果；旧语言文件支持新消息默认值。
 
 - **1.0.6-Release**：升级 Paper API 1.21.1，集成 FoliaLib 支持 Folia 核心，新增 `/mrs analyze` 命令，支持第三方附魔命名空间
 - **1.0.5-Release**：新增符文拆卸粉功能

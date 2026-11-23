@@ -1,5 +1,6 @@
 package com.morunesocketing;
 
+import com.morunesocketing.util.SchedulerUtils;
 import org.bukkit.entity.Player;
 import java.util.Map;
 import java.util.UUID;
@@ -116,8 +117,9 @@ public class DataManager {
      */
     private void refreshAllOpenMenus() {
         for (Player player : openMenuPlayers.values()) {
-            if (player != null && player.isOnline()) {
-                RuneManager.refreshMenu(player);
+            if (player != null) {
+                // Database sync can call this asynchronously; inventories belong to the entity thread.
+                SchedulerUtils.runTaskForEntity(player, () -> RuneManager.refreshMenu(player));
             }
         }
     }

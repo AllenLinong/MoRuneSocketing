@@ -46,7 +46,6 @@ public class RuneListener implements Listener {
     private static final String NBT_NO_CRAFT = "no_craft";
     private static final String NBT_CUSTOM_BUFF = "custom_buff";
     private static final String BUFF_TYPE_LUCK = "LUCK";
-    private static final String MENU_TITLE_KEYWORD = "镶嵌";
     
     // ==================== 配置字段 ====================
     
@@ -225,15 +224,17 @@ public class RuneListener implements Listener {
     
     // ==================== 装备变化事件 ====================
     
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
+        if (event.isCancelled()) {
+            return;
+        }
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
         
-        String title = event.getView().getTitle();
-        if (title.contains(MENU_TITLE_KEYWORD)) {
-            handleMenuClick(event);
+        if (RuneManager.isRuneMenu(event.getInventory())) {
+            RuneManager.handleInsertMenuClick(event);
             return;
         }
         
@@ -278,34 +279,14 @@ public class RuneListener implements Listener {
     
     // ==================== 菜单事件 ====================
     
-    private void handleMenuClick(InventoryClickEvent event) {
-        Inventory inventory = event.getInventory();
-        int rawSlot = event.getRawSlot();
-        
-        if (rawSlot >= 0 && rawSlot < inventory.getSize()) {
-            RuneManager.handleInsertMenuClick(event);
-        } else {
-            event.setCancelled(false);
-        }
-    }
-    
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) {
             return;
         }
         
-        String title = event.getView().getTitle();
-        if (!title.contains(MENU_TITLE_KEYWORD)) {
-            return;
-        }
-        
-        Inventory inventory = event.getInventory();
-        for (int slot : event.getRawSlots()) {
-            if (slot >= 0 && slot < inventory.getSize()) {
-                event.setCancelled(true);
-                return;
-            }
+        if (RuneManager.isRuneMenu(event.getInventory())) {
+            RuneManager.handleMenuDrag(event);
         }
     }
     
@@ -315,8 +296,7 @@ public class RuneListener implements Listener {
             return;
         }
         
-        String title = event.getView().getTitle();
-        if (title.contains(MENU_TITLE_KEYWORD)) {
+        if (RuneManager.isRuneMenu(event.getInventory())) {
             RuneManager.handleMenuClose(event);
         }
     }
